@@ -2,30 +2,26 @@ package com.ducksoup.kilometrage.fragment
 
 import android.app.AlertDialog
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
-import android.os.Environment
-import android.util.Log
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
-import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.ducksoup.kilometrage.*
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import java.io.File
-import java.io.FileWriter
+import java.io.FileOutputStream
+import java.time.ZoneId
+import java.util.*
 
 class RecordsFragment : Fragment() {
 
@@ -74,13 +70,38 @@ class RecordsFragment : Fragment() {
     }
 
     private fun shareLog(record: Record) {
+
         dataViewModel.exportEntries(record) { list ->
             val ctx = requireContext()
-            val filename = "${record.name}.csv"
+            val workbook = XSSFWorkbook()
+            val sheet = workbook.createSheet("sample")
+
+            val style = workbook.createCellStyle()
+            style.dataFormat = workbook.creationHelper.createDataFormat().getFormat("m/d/yy")
+
+            list.forEachIndexed { index, entry ->
+                val row = sheet.createRow(index)
+                val distanceCell = row.createCell(0)
+                distanceCell.setCellValue(entry.distance)
+
+                val dateCell = row.createCell(1)
+                val date = Date.from(entry.date?.atZone(ZoneId.systemDefault())?.toInstant())
+                dateCell.setCellValue(date)
+                dateCell.cellStyle = style
+
+//                file.appendText("${it.distance};${it.date}\n")
+            }
+
+            sheet.setColumnWidth(1, 10 * 256)
+
+            val filename = "${record.name}.xls"
             File.createTempFile(filename, null, ctx.filesDir)
             val file = File(ctx.filesDir, filename)
-            list.forEach { file.appendText("${it.distance};${it.date}\n") }
-            val uri = FileProvider.getUriForFile(ctx, "com.ducksoup.provider", file);
+            val fileOut = FileOutputStream(file)
+            workbook.write(fileOut)
+            fileOut.close()
+
+            val uri = FileProvider.getUriForFile(ctx, "com.ducksoup.provider", file)
 
             val intent = Intent().apply {
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)

@@ -60,4 +60,9 @@ dependencies {
     implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:$rootProject.lifecycleVersion"
     implementation "androidx.activity:activity-ktx:$rootProject.activityVersion"
 
+    //Apache POI for excel
+    implementation ("com.github.SUPERCILEX.poi-android:poi:3.17") {
+        exclude group: "org.codehaus.woodstox", module: "stax2-api"
+    }
+
 }
