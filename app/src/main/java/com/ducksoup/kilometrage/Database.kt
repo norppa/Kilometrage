@@ -3,6 +3,7 @@ package com.ducksoup.kilometrage
 import android.content.Context
 import androidx.recyclerview.widget.DiffUtil
 import androidx.room.*
+import androidx.sqlite.db.SimpleSQLiteQuery
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDateTime
 import java.util.*
@@ -65,8 +66,8 @@ interface DAO {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRecord(record: Record)
 
-    @Query("DELETE FROM records")
-    suspend fun deleteAllRecords()
+    @RawQuery
+    suspend fun deleteRecords(query: SimpleSQLiteQuery):Boolean
 
     @Delete
     suspend fun deleteRecord(record: Record)
@@ -79,14 +80,14 @@ interface DAO {
     @Query("SELECT * FROM entries WHERE recordId = :id ORDER BY date DESC")
     fun getEntries(id: Int): Flow<List<Entry>>
 
-    @Query("SELECT * FROM entries WHERE recordId = :id ORDER BY date DESC")
-    suspend fun getEntryList(id: Int): List<Entry>
-
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEntry(entry: Entry)
 
     @Delete
     suspend fun deleteEntry(entry: Entry)
+
+    @RawQuery
+    suspend fun getEntryList(query: SimpleSQLiteQuery):List<Entry>
 }
 
 @Database(entities = [Record::class, Entry::class], version = 1, exportSchema = false)
@@ -108,6 +109,14 @@ abstract class DB : RoomDatabase() {
                 instance
             }
             return instance.dao()
+        }
+
+        fun entriesQueryString(length: Int): String {
+            return "SELECT * FROM entries WHERE recordId IN (${"?,".repeat(length - 1)}?)"
+        }
+
+        fun deleteRecordsQueryString(length:Int): String {
+            return "DELETE FROM records WHERE id IN (${"?,".repeat(length - 1)}?)"
         }
 
     }

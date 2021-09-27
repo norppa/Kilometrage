@@ -50,7 +50,6 @@ class MainFragment : Fragment() {
         MenuCompat.setGroupDividerEnabled(menu, true)
     }
 
-
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.manage_logs -> {

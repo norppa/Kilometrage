@@ -3,9 +3,8 @@ package com.ducksoup.kilometrage.fragment
 import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
+import android.view.*
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
@@ -24,13 +23,19 @@ import java.time.ZoneId
 import java.util.*
 
 class RecordsFragment : Fragment() {
+    private val selectedRecords = mutableListOf<Record>()
+    private lateinit var addButton: FloatingActionButton
+    private lateinit var deleteButton: FloatingActionButton
+    private lateinit var editButton: FloatingActionButton
+    private lateinit var exportButton: FloatingActionButton
 
     private val dataViewModel: DataViewModel by viewModels {
         DataViewModelFactory(DB.getDao(requireContext()))
     }
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
+        inflater: LayoutInflater,
+        container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
         return inflater.inflate(R.layout.fragment_records, container, false)
@@ -40,10 +45,21 @@ class RecordsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         activity?.title = "Kilometrage: Logs"
 
-        view.findViewById<FloatingActionButton>(R.id.fab).setOnClickListener { openNewLogDialog() }
+        addButton = view.findViewById(R.id.addButton)
+        deleteButton = view.findViewById(R.id.deleteButton)
+        editButton = view.findViewById(R.id.editButton)
+        exportButton = view.findViewById(R.id.exportButton)
+
+        addButton.setOnClickListener {
+            println("SELECTED: $selectedRecords")
+            openNewLogDialog()
+        }
+        deleteButton.setOnClickListener { openDeleteSelectedRecordsDialog() }
+        editButton.setOnClickListener { openEditRecordDialog() }
+        exportButton.setOnClickListener { exportSelected() }
 
         val recyclerView = view.findViewById<RecyclerView>(R.id.recyclerview)
-        val adapter = Adapter(::shareLog, ::openEditRecordDialog, ::openDeleteRecordDialog)
+        val adapter = Adapter()
         recyclerView.adapter = adapter
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
 
@@ -69,32 +85,32 @@ class RecordsFragment : Fragment() {
             .show()
     }
 
-    private fun shareLog(record: Record) {
-
-        dataViewModel.exportEntries(record) { list ->
+    private fun exportSelected() {
+        dataViewModel.exportEntries(selectedRecords) { list ->
             val ctx = requireContext()
             val workbook = XSSFWorkbook()
-            val sheet = workbook.createSheet("sample")
-
             val style = workbook.createCellStyle()
             style.dataFormat = workbook.creationHelper.createDataFormat().getFormat("m/d/yy")
 
-            list.forEachIndexed { index, entry ->
-                val row = sheet.createRow(index)
-                val distanceCell = row.createCell(0)
-                distanceCell.setCellValue(entry.distance)
+            selectedRecords.forEach { record ->
+                val sheet = workbook.createSheet(record.name)
+                list.filter { it.recordId == record.id }
+                    .sortedByDescending { it.date }
+                    .forEachIndexed { index, entry ->
+                        val row = sheet.createRow(index)
+                        val distanceCell = row.createCell(0)
+                        distanceCell.setCellValue(entry.distance)
 
-                val dateCell = row.createCell(1)
-                val date = Date.from(entry.date?.atZone(ZoneId.systemDefault())?.toInstant())
-                dateCell.setCellValue(date)
-                dateCell.cellStyle = style
-
-//                file.appendText("${it.distance};${it.date}\n")
+                        val dateCell = row.createCell(1)
+                        val date =
+                            Date.from(entry.date?.atZone(ZoneId.systemDefault())?.toInstant())
+                        dateCell.setCellValue(date)
+                        dateCell.cellStyle = style
+                    }
+                sheet.setColumnWidth(1, 10 * 256)
             }
 
-            sheet.setColumnWidth(1, 10 * 256)
-
-            val filename = "${record.name}.xls"
+            val filename = "kilometrage_logs.xls"
             File.createTempFile(filename, null, ctx.filesDir)
             val file = File(ctx.filesDir, filename)
             val fileOut = FileOutputStream(file)
@@ -113,7 +129,8 @@ class RecordsFragment : Fragment() {
         }
     }
 
-    private fun openEditRecordDialog(record: Record) {
+    private fun openEditRecordDialog() {
+        val record = selectedRecords[0]
         val view = requireActivity().layoutInflater.inflate(R.layout.dialog_add_record, null)
         view.findViewById<EditText>(R.id.name).setText(record.name)
         AlertDialog.Builder(requireActivity())
@@ -122,28 +139,55 @@ class RecordsFragment : Fragment() {
             .setPositiveButton("Rename") { _, _ ->
                 val name = view.findViewById<EditText>(R.id.name).text.toString()
                 dataViewModel.updateRecord(Record(record.id, name))
+                selectedRecords.clear()
+                updateButtonVisibility()
             }
             .setNegativeButton("Cancel", null)
             .show()
     }
 
-    private fun openDeleteRecordDialog(record: Record) {
+    private fun openDeleteSelectedRecordsDialog() {
+        val message = "Are you sure you want to delete following logs and all their entries?\n" +
+                selectedRecords.fold("", { acc, cur -> "$acc\n- ${cur.name}" }) +
+                "\nThis action can not be undone."
         AlertDialog.Builder(requireActivity())
-            .setTitle("Delete log")
-            .setMessage("Are you sure you want to delete log \"${record.name}\" and all its entries? This action can not be undone.")
-            .setPositiveButton("Delete") { _, _ ->
-                dataViewModel.deleteRecord(record)
+            .setTitle("Delete logs")
+            .setMessage(message)
+            .setPositiveButton("Delete")
+            { _, _ ->
+                selectedRecords.forEach { record ->
+                    dataViewModel.deleteRecord(record)
+                }
+                selectedRecords.clear()
+                updateButtonVisibility()
+
             }
             .setNegativeButton("Cancel", null)
             .show()
     }
 
-    inner class Adapter(
-        val share: (Record) -> Unit,
-        val edit: (Record) -> Unit,
-        val delete: (Record) -> Unit
-    ) :
-        ListAdapter<Record, Adapter.ViewHolder>(Record.Comparator()) {
+    private fun updateButtonVisibility() {
+        when (selectedRecords.size) {
+            0 -> {
+                deleteButton.visibility = View.GONE
+                editButton.visibility = View.GONE
+                exportButton.visibility = View.GONE
+            }
+            1 -> {
+                deleteButton.visibility = View.VISIBLE
+                editButton.visibility = View.VISIBLE
+                exportButton.visibility = View.VISIBLE
+            }
+            else -> {
+                deleteButton.visibility = View.VISIBLE
+                editButton.visibility = View.GONE
+                exportButton.visibility = View.VISIBLE
+            }
+        }
+
+    }
+
+    inner class Adapter : ListAdapter<Record, Adapter.ViewHolder>(Record.Comparator()) {
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
             return ViewHolder(
@@ -154,17 +198,21 @@ class RecordsFragment : Fragment() {
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
             val current = getItem(position)
+            holder.checkbox.isChecked = selectedRecords.contains(current)
+            holder.checkbox.setOnCheckedChangeListener { _, isChecked ->
+                if (isChecked) {
+                    selectedRecords.add(current)
+                } else {
+                    selectedRecords.remove(current)
+                }
+                updateButtonVisibility()
+            }
             holder.name.text = current.name
-            holder.share.setOnClickListener { share(current) }
-            holder.delete.setOnClickListener { delete(current) }
-            holder.edit.setOnClickListener { edit(current) }
         }
 
         inner class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+            val checkbox: CheckBox = itemView.findViewById(R.id.checkbox)
             val name: TextView = itemView.findViewById(R.id.name)
-            val share: ImageView = itemView.findViewById(R.id.share)
-            val edit: ImageView = itemView.findViewById(R.id.edit)
-            val delete: ImageView = itemView.findViewById(R.id.delete)
         }
     }
 }

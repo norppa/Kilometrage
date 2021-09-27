@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.core.content.ContextCompat.startActivity
 import androidx.core.content.FileProvider
 import androidx.lifecycle.*
+import androidx.sqlite.db.SimpleSQLiteQuery
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileWriter
@@ -22,24 +23,27 @@ class DataViewModel(private val dao: DAO) : ViewModel() {
 
 
     fun insert(record: Record) = viewModelScope.launch { dao.insertRecord(record) }
-//    fun insert(distance: Double, date: Date) {
-//        val recordId = selectedRecordId.value
-//            ?: throw Exception("selected record id must not be null")
-//        insert(distance, date, recordId)
-//    }
 
     fun insert(distance: Double, date: LocalDateTime, recordId: Int) = viewModelScope.launch {
         dao.insertEntry(Entry(0, distance, date, recordId))
     }
 
-    fun deleteAllRecords() = viewModelScope.launch { dao.deleteAllRecords() }
     fun updateRecord(record: Record) = viewModelScope.launch { dao.updateRecord(record) }
     fun deleteRecord(record: Record) = viewModelScope.launch { dao.deleteRecord(record) }
+    fun deleteRecords(records: List<Record>) {
+        viewModelScope.launch {
+            val queryString = DB.deleteRecordsQueryString(records.size)
+            val values = records.map { it.id }.toTypedArray()
+            dao.deleteRecords(SimpleSQLiteQuery(queryString, values))
+        }
+    }
     fun deleteEntry(id: Int) = viewModelScope.launch { dao.deleteEntry(Entry(id)) }
 
-    fun exportEntries(record: Record, callback: (List<Entry>) -> Unit) {
+    fun exportEntries(records: List<Record>, callback: (List<Entry>) -> Unit) {
         viewModelScope.launch {
-            callback(dao.getEntryList(record.id))
+            val queryString = DB.entriesQueryString(records.size)
+            val values = records.map { it.id }.toTypedArray()
+            callback(dao.getEntryList(SimpleSQLiteQuery(queryString, values)))
         }
     }
 }
