@@ -1,16 +1,9 @@
 package com.ducksoup.kilometrage
 
-import android.content.Intent
-import android.net.Uri
-import androidx.core.content.ContextCompat.startActivity
-import androidx.core.content.FileProvider
 import androidx.lifecycle.*
 import androidx.sqlite.db.SimpleSQLiteQuery
 import kotlinx.coroutines.launch
-import java.io.File
-import java.io.FileWriter
 import java.time.LocalDateTime
-import java.util.*
 
 class DataViewModel(private val dao: DAO) : ViewModel() {
 
@@ -21,6 +14,8 @@ class DataViewModel(private val dao: DAO) : ViewModel() {
         dao.getEntries(it).asLiveData()
     }
 
+    val allEntries: LiveData<List<RecordWithEntries>> = dao.getAllEntries().asLiveData()
+
 
     fun insert(record: Record) = viewModelScope.launch { dao.insertRecord(record) }
 
@@ -30,13 +25,7 @@ class DataViewModel(private val dao: DAO) : ViewModel() {
 
     fun updateRecord(record: Record) = viewModelScope.launch { dao.updateRecord(record) }
     fun deleteRecord(record: Record) = viewModelScope.launch { dao.deleteRecord(record) }
-    fun deleteRecords(records: List<Record>) {
-        viewModelScope.launch {
-            val queryString = DB.deleteRecordsQueryString(records.size)
-            val values = records.map { it.id }.toTypedArray()
-            dao.deleteRecords(SimpleSQLiteQuery(queryString, values))
-        }
-    }
+
     fun deleteEntry(id: Int) = viewModelScope.launch { dao.deleteEntry(Entry(id)) }
 
     fun exportEntries(records: List<Record>, callback: (List<Entry>) -> Unit) {
@@ -46,6 +35,7 @@ class DataViewModel(private val dao: DAO) : ViewModel() {
             callback(dao.getEntryList(SimpleSQLiteQuery(queryString, values)))
         }
     }
+
 }
 
 class DataViewModelFactory(private val dao: DAO) : ViewModelProvider.Factory {

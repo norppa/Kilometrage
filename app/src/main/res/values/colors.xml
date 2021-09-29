@@ -10,4 +10,18 @@
     <color name="colorPrimaryDark">#303F9F</color>
     <color name="colorAccent">#FF4081</color>
     <color name="buttonLabel">#FFFFFF</color>
+
+
+    <color name="chart_0">#FF0000</color>
+    <color name="chart_1">#00EAFF</color>
+    <color name="chart_2">#AA00FF</color>
+    <color name="chart_3">#FF7F00</color>
+    <color name="chart_4">#BFFF00</color>
+    <color name="chart_5">#0095FF</color>
+    <color name="chart_6">#FF00AA</color>
+    <color name="chart_7">#FFD400</color>
+    <color name="chart_8">#6AFF00</color>
+    <color name="chart_9">#0040FF</color>
+
+
 </resources>

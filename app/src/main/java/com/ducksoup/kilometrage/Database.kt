@@ -45,6 +45,15 @@ data class Entry(
     }
 }
 
+data class RecordWithEntries(
+    @Embedded val record: Record,
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "recordId"
+    )
+    val entries: List<Entry>
+)
+
 class Converters {
     @TypeConverter
     fun toLocalDateTime(value: String?): LocalDateTime? {
@@ -75,10 +84,14 @@ interface DAO {
     @Update
     suspend fun updateRecord(record: Record)
 
-    suspend fun getEntries(id:Int, observable: Boolean = true) {}
+//    suspend fun getEntries(id:Int, observable: Boolean = true) {}
 
     @Query("SELECT * FROM entries WHERE recordId = :id ORDER BY date DESC")
     fun getEntries(id: Int): Flow<List<Entry>>
+
+    @Transaction
+    @Query("SELECT * FROM records")
+    fun getAllEntries(): Flow<List<RecordWithEntries>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEntry(entry: Entry)

@@ -2,9 +2,7 @@ package com.ducksoup.kilometrage.fragment
 
 import android.app.AlertDialog
 import android.os.Bundle
-import android.util.Log
 import android.view.*
-import android.view.ContextMenu.ContextMenuInfo
 import android.widget.*
 import androidx.core.view.MenuCompat
 import androidx.fragment.app.Fragment
@@ -20,11 +18,9 @@ import com.google.android.material.tabs.TabLayout
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import java.time.Instant
-import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.util.*
 
 
 class MainFragment : Fragment() {
@@ -52,8 +48,12 @@ class MainFragment : Fragment() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
-            R.id.manage_logs -> {
+            R.id.to_logs -> {
                 findNavController().navigate(R.id.action_mainFragment_to_recordsFragment)
+                true
+            }
+            R.id.to_graphs -> {
+                findNavController().navigate(R.id.action_mainFragment_to_graphFragment)
                 true
             }
             else -> super.onOptionsItemSelected(item)
@@ -82,7 +82,6 @@ class MainFragment : Fragment() {
 
         dataViewModel.records.observe(viewLifecycleOwner, { observed ->
             observed?.let { records ->
-                Log.i("DEBUG", "records ${records.size}")
                 if (records.isEmpty()) {
                     openFirstRecordDialog()
                 } else {
@@ -191,7 +190,6 @@ class MainFragment : Fragment() {
                 popup.setOnMenuItemClickListener {
                     when (it.itemId) {
                         R.id.menu_delete -> {
-                            Log.i("DEBUG", "delete item ${holder.name.text}")
                             dataViewModel.deleteEntry(current.id)
                             true
                         }

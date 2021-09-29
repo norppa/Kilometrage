@@ -12,6 +12,9 @@
         <action
             android:id="@+id/action_mainFragment_to_recordsFragment"
             app:destination="@id/recordsFragment" />
+        <action
+            android:id="@+id/action_mainFragment_to_graphFragment"
+            app:destination="@id/graphFragment" />
     </fragment>
 
     <fragment
@@ -21,6 +24,18 @@
 
         <action
             android:id="@+id/action_recordsFragment_to_mainFragment"
+            app:destination="@id/mainFragment"
+            app:popUpTo="@id/mainFragment"
+            app:popUpToInclusive="true" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/graphFragment"
+        android:name="com.ducksoup.kilometrage.fragment.GraphFragment"
+        android:label="fragment_graph"
+        tools:layout="@layout/fragment_graph" >
+        <action
+            android:id="@+id/action_graphFragment_to_mainFragment"
             app:destination="@id/mainFragment"
             app:popUpTo="@id/mainFragment"
             app:popUpToInclusive="true" />
